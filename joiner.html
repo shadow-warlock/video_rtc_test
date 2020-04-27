@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<video id="localVideo" width="640" height="480" playsinline autoplay></video>
+<video id="remoteVideo" width="640" height="480" playsinline autoplay></video>
+</body>
+<script>
+    const localVideo = document.getElementById('localVideo');
+    const remoteVideo = document.getElementById('remoteVideo');
+    let localStream;
+    let candidates = [];
+    let pc2;
+    const offerOptions = {
+        offerToReceiveAudio: 1,
+        offerToReceiveVideo: 1
+    };
+
+    async function work(){
+        const stream = await navigator.mediaDevices.getUserMedia({audio: true, video: true});
+        localVideo.srcObject = stream;
+        localStream = stream;
+        const configuration = {'iceServers': [{ 'urls': 'stun:stun.l.google.com:19302' }]};
+        pc2 = new RTCPeerConnection(configuration);
+        pc2.addEventListener('icecandidate', e => onIceCandidate(e));
+        pc2.addEventListener('track', gotRemoteStream);
+        localStream.getTracks().forEach(track => pc2.addTrack(track, localStream));
+        let offer = JSON.parse(prompt("offer"));
+        await pc2.setRemoteDescription(offer);
+        let candidates = JSON.parse(prompt("candidates"));
+        for(let i=0; i < candidates.length; i++){
+            await pc2.addIceCandidate(candidates[i]);
+        }
+        const answer = await pc2.createAnswer(offerOptions);
+        alert(JSON.stringify(answer));
+        await pc2.setLocalDescription(answer);
+    }
+
+
+    function gotRemoteStream(e) {
+        if (remoteVideo.srcObject !== e.streams[0]) {
+            remoteVideo.srcObject = e.streams[0];
+            console.log('pc2 received remote stream');
+        }
+    }
+
+    async function onIceCandidate(event) {
+        if(event.candidate === null)
+            alert(JSON.stringify(candidates));
+        else
+            candidates.push(event.candidate)
+    }
+
+    work();
+</script>
+<!--<script>-->
+<!--    let video = document.getElementById('video');-->
+<!--    console.log(navigator.mediaDevices);-->
+<!--    console.log(navigator.mediaDevices.getUserMedia);-->
+<!--    if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {-->
+<!--        navigator.mediaDevices.getUserMedia({video: true, audio: true}).then(function (stream) {-->
+<!--            console.log(stream);-->
+<!--            video.srcObject = stream;-->
+<!--            video.play();-->
+<!--        });-->
+<!--    }-->
+<!--</script>-->
+
+</html>
